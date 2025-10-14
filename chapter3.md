@@ -1,0 +1,41 @@
+# Chapter 3 – Survey of Open Projects and Protocol Coverage
+
+This chapter presents a survey of open‑source projects related to PCI Express (PCIe) and USB 3.x, summarizing which protocol layers each project covers and the hardware platforms they target.  The aim is to provide a high‑level map of available building blocks for designers seeking fully open solutions.
+
+## 3.1 Layered Model and Methodology
+
+For each project we identify which parts of the protocol stack are implemented:
+
+- **Physical Layer (PHY)** – 8b/10b or 128b/130b encoding, symbol alignment, link training, equalization and electrical SERDES interface.
+- **Data Link Layer (DLL)** – packet framing, sequence numbers, ACK/NAK management and credit‑based flow control【852616939366164†L840-L856】.
+- **Transaction/Protocol Layer** – formation of transaction layer packets (TLPs) for PCIe or protocol packets for USB3, configuration space management, DMA engines, and endpoint logic.
+
+We also note the **target FPGA family**, whether the design uses **vendor hard IP** or a **soft PHY**, and the toolchain compatibility.
+
+## 3.2 Overview Table
+
+| Project / Repository | Protocol & Target FPGA | Physical Layer | Data Link Layer | Transaction/Protocol Layer | Notes |
+|---|---|---|---|---|---|
+| **ECP5‑PCIe** (Codeberg) | PCIe Gen1/Gen2 on Lattice ECP5 | ✔ Soft PHY based on *Yumewatari*; uses ECP5 SERDES via open Trellis【9†L5-L10】【357389378787921†L31-L36】 | ✘ Not implemented – currently only captures DLLPs【2†L315-L323】 | ✘ No TLP layer; intended to combine with LitePCIe later | Demonstrates L0 link at Gen1/Gen2 but does not yet enumerate as a device; built with Yosys/nextpnr. |
+| **Yumewatari** (whitequark) | PCIe Gen1 PHY for Lattice ECP5 & Xilinx 7‑Series | ✔ Soft PHY implements 8b/10b encoding, disparity control and a rudimentary LTSSM【9†L5-L10】 | ✘ Not fully implemented; minimal link training only | ✘ No TLP layer | Serves as the PHY foundation for ECP5‑PCIe; demonstration of a soft PCIe PHY. |
+| **LitePCIe** (enjoy‑digital) | PCIe endpoint on Xilinx 7‑Series, Xilinx UltraScale, Intel Cyclone5 | ✘ Uses vendor’s hardened PCIe block/PHY【954422993286913†L245-L249】 | ✘ Relies on vendor IP for DLL【954422993286913†L245-L249】 | ✔ Implements Transaction layer: TLP parsing, reordering, MSI/MSI‑X, crossbar, scatter‑gather DMA【688402054328452†L307-L327】 | Provides configurable bus interface (Wishbone/AXI), Linux driver and PTM support【688402054328452†L307-L327】. |
+| **Verilog‑PCIe** (Alex Forencich) | PCIe endpoint/bridge for Xilinx & Intel FPGAs | ✘ Uses vendor PCIe hard IP via adapter shims (`pcie_us_if`, `pcie_s10_if`, etc.)【895947797773709†L43-L60】 | ✘ DLL handled inside the vendor hard IP【895947797773709†L43-L60】 | ✔ Provides generic TLP interface, AXI bridges and high‑performance DMA subsystem【895947797773709†L62-L129】 | Includes cocotb testbenches, MSI/MSI‑X support and multi‑platform examples. |
+| **openPCIE** | Root complex (host) for Xilinx Artix‑7 | ✔ Uses Xilinx hard macro (`PCIE_2_1`) but aims to wrap it with open soft IP【182297874617818†L10-L33】 | ✘ Relies on hard macro’s DLL | ✘ Not yet – focus is on root complex; TLP engine will be provided by other open cores | Aims to create an open PCIe stack for controlling peripherals from soft RISC‑V SoCs, gradually phasing out the hard macro【182297874617818†L21-L29】. |
+| **usb3_pipe** (enjoy‑digital) | USB 3.0 PIPE core on Xilinx 7‑Series | ✔ Soft PIPE PHY: uses FPGA transceivers to perform 8b/10b encoding and link training【22133856583036†L18-L40】 | **Partial** – implements link training and some flow control when paired with a USB3 controller core | **Partial** – requires a separate USB3 core (e.g., Daisho) for protocol layer【22133856583036†L18-L40】 | Designed to eventually support multiple protocols (PCIe, SATA, DisplayPort) via the same PIPE interface【22133856583036†L18-L40】. |
+| **LUNA** (Great Scott Gadgets) | USB 2.0/3.x device on Lattice ECP5 | ✔ PHY implemented in Amaranth; uses ECP5 SERDES for USB 3.0 and ULPI for USB 2【715347639244125†L47-L53】 | **Partial/Complete** – link layer handles packet framing, NRDY/ERDY handshake and flow control; SuperSpeed support is experimental【715347639244125†L47-L53】【715347639244125†L154-L240】 | ✔ Full USB protocol layer: endpoints, descriptors, control and bulk transfers【786848477618471†L14-L17】 | Device‑only (no host mode yet) but supports Low/Full/High/experimental SuperSpeed【715347639244125†L141-L146】. |
+| **pcie_7x** (Regymm) | PCIe Gen2 x1 endpoint on Xilinx 7‑Series | ✔ Uses Xilinx `PCIE_2_1` hard block and GTP transceiver via open wrapper【319209819587374†L0-L5】 | ✔ Implemented inside hard block; open wrapper exposes AXI‑stream interface | ✔ Implements simple BARs, config space, MSI interrupts; integrates with openXC7 toolchain【319209819587374†L69-L80】 | First open toolchain example of a PCIe endpoint on Xilinx devices; targeted at hobbyist boards like Alinx AC7100 and TimeCard. |
+| **pcie_7x** (Regymm) | PCIe Gen2 x1 endpoint on Xilinx 7‑Series | ✔ Uses Xilinx `PCIE_2_1` hard block and GTP transceiver via open wrapper【319209819587374†L0-L5】 | ✔ Implemented inside hard block; open wrapper exposes AXI‑stream interface | ✔ Implements simple BARs, config space, MSI interrupts; integrates with openXC7 toolchain【319209819587374†L69-L80】 | Example of a PCIe endpoint synthesised with an open toolchain on Xilinx devices; targeted at boards like Alinx AC7100 and TimeCard. |
+| **Yumewatari (USB port)** | USB 3.0 device (port of Daisho) for Lattice ECP5 | ✔ Soft PHY using ECP5 SERDES with 8b/10b encoding | **Partial** – derived from Daisho link layer (NRDY/ERDY handling) | **Partial** – builds on Daisho’s USB3 device controller | Predecessor to LUNA; a demonstration of open USB3 on ECP5. |
+| **Warp‑Pipe** (Antmicro) | PCIe modeling library (software) | N/A – simulation tool | ✔ Models DLLPs (ACK/NAK, flow control) in software【15367728790201†L23-L39】 | ✔ Models TLP routing, MSI and configuration transactions【15367728790201†L23-L39】 | Used for co‑simulation between QEMU and Renode; not hardware but important for verifying open PCIe designs. |
+| **ngScopeClient** | Instrumentation/analysis tool | N/A – oscilloscope client | ✔ Supports decoding of PCIe physical layer waveforms and packet training sequences【166497749232038†L7-L16】 | ✔ Decodes DLLPs and TLPs for protocol analysis【166497749232038†L7-L16】 | Provides open‑source protocol analysis combining waveform and packet views; essential for debugging. |
+| **RIFFA** | PCIe communication framework for Xilinx/Altera | ✘ Uses vendor IP for physical and link layers | ✘ Relies on vendor IP | ✔ Provides FIFO‑style data streams and host drivers; abstracts TLPs【35†L275-L307】 | Emphasises simplicity by exposing FIFO interfaces rather than detailed protocol control. |
+
+## 3.3 Observations
+
+1. Only a few projects implement the PHY in fabric – notably *Yumewatari*, `ECP5‑PCIe` and `usb3_pipe`. Most other projects rely on hardened transceivers or vendor IP.
+2. Many open PCIe projects do not implement the Data Link layer. For example, *Yumewatari* and `ECP5‑PCIe` do not provide full credit‑based ACK/NAK logic, and projects such as `LitePCIe` and `Verilog‑PCIe` rely on vendor hard IP for this functionality【954422993286913†L245-L249】.
+3. USB3 open cores implement more protocol layers than many PCIe projects. Designs derived from Daisho and LUNA implement the link and protocol layers entirely in open HDL【715347639244125†L47-L53】, whereas many PCIe designs rely on closed components for reliable delivery.
+4. **Most open designs target ECP5 or Xilinx 7‑Series.** This reflects availability of open documentation (ECP5 via Trellis) or the existence of a widely distributed hard PCIe block (Xilinx 7‑Series).  Other families have little to no open support.
+5. Tools such as Warp‑Pipe and ngScopeClient provide facilities for testing and debugging open protocol cores without proprietary analyzers【15367728790201†L23-L39】【166497749232038†L7-L16】.  They help verify the correctness of new designs.
+
+The next chapter provides a deeper analysis of each project, describing their successes, limitations and integration into open toolchains.

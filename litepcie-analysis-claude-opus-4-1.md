@@ -46,88 +46,6 @@ def phy_layout(data_width):
 
 This streaming interface carries raw TLP bytes from the vendor PHY to LitePCIe's custom logic. All TLP intelligence resides in LitePCIe's implementation above this boundary.
 
-## Vendor-Specific Implementations
-
-### Xilinx 7-Series Implementation
-
-The Xilinx 7-Series PHY wrapper ([`litepcie/phy/s7pciephy.py`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py)) uses these Xilinx hard IP blocks:
-
-#### PCIE_2_1 Hard Block
-The [PCIE_2_1](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py#L146-L228) primitive implements:
-- PCIe Physical Layer including SERDES
-- Data Link Layer with ACK/NAK protocol
-- Link Training and Status State Machine (LTSSM)
-- Configuration space registers (0x00-0xFF)
-- Flow control credit management
-- DLLP generation and processing
-- TLP CRC generation/checking
-
-Configuration parameters are set via TCL ([lines 474-531](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py#L474-L531)):
-```python
-config = {
-    "Component_Name": ip_name,
-    "Vendor_ID": "0x10EE",
-    "Device_ID": "0x7021",
-    "Bar0_Scale": "Megabytes",
-    "Bar0_Size": bar0_size//1024//1024,
-    "Link_Speed": {64: "2.5_GT/s", 128: "5.0_GT/s"}[pcie_data_width],
-    "Maximum_Link_Width": f"X{nlanes}",
-}
-```
-
-#### Clock Resources
-- [IBUFDS_GTE2](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py#L127-L132): Differential clock input buffer for PCIe reference clock
-- [BUFG](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py#L136): Global clock buffer
-- [S7MMCM](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py#L413-L436): Mixed-Mode Clock Manager for generating user clocks
-
-### Xilinx UltraScale/UltraScale+ Implementation
-
-The UltraScale PHY ([`litepcie/phy/uspciephy.py`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/uspciephy.py)) uses more advanced hard blocks:
-
-#### PCIe Hard Block Variants
-Selection logic at [lines 175-185](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/uspciephy.py#L175-L185):
-```python
-pcie_hard_block = {
-    "gen3" : {
-        False : "PCIE3_UltraScale",
-        True  : "PCIE30E_UltraScale",
-    },
-    "gen4" : {
-        False : "PCIE40E_UltraScale",
-        True  : "PCIE4CE_UltraScale",
-    }
-}[speed][is_versal]
-```
-
-These blocks implement:
-- Gen3 (8.0 GT/s) or Gen4 (16.0 GT/s) speeds
-- Up to x16 lane configurations
-- Advanced equalization for Gen3/Gen4
-- Extended configuration space support
-- Enhanced flow control
-
-### Intel Cyclone V Implementation  
-
-The Intel PHY ([`litepcie/phy/c5pciephy.py`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/c5pciephy.py)) uses:
-
-#### altpcie_hip Hard IP
-Instantiated via TCL at [lines 374-401](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/c5pciephy.py#L374-L401):
-- Implements PCIe Gen1/Gen2 Physical and Data Link layers
-- Uses Avalon-ST interface instead of AXI
-- Requires protocol conversion wrappers
-
-LitePCIe provides [AvalonST2Native](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/c5pciephy.py#L68-L111) and [Native2AvalonST](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/c5pciephy.py#L115-L158) converters to translate between Intel's Avalon-ST and LitePCIe's native protocol.
-
-### Lattice CertusPro-NX Implementation
-
-The Lattice PHY ([`litepcie/phy/lfcpnxpciephy.py`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/lfcpnxpciephy.py)) uses:
-
-#### pcie_hardblock_x1 IP
-Configured at [lines 312-335](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/lfcpnxpciephy.py#L312-L335):
-- PCIe Gen2 x1 hard IP implementation
-- Integrated SERDES and PCIe controller
-- Limited to single lane operation
-
 ## LitePCIe Custom Implementation
 
 ### TLP Processing Layer
@@ -202,6 +120,88 @@ self.tx_cdc = stream.ClockDomainCrossing(
     with_common_rst = True
 )
 ```
+
+## Vendor-Specific Implementations
+
+### Xilinx 7-Series Implementation
+
+The Xilinx 7-Series PHY wrapper ([`litepcie/phy/s7pciephy.py`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py)) uses these Xilinx hard IP blocks:
+
+#### PCIE_2_1 Hard Block
+The [PCIE_2_1](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py#L146-L228) primitive implements:
+- PCIe Physical Layer including SERDES
+- Data Link Layer with ACK/NAK protocol
+- Link Training and Status State Machine (LTSSM)
+- Configuration space registers (0x00-0xFF)
+- Flow control credit management
+- DLLP generation and processing
+- TLP CRC generation/checking
+
+Configuration parameters are set via TCL ([lines 474-531](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py#L474-L531)):
+```python
+config = {
+    "Component_Name": ip_name,
+    "Vendor_ID": "0x10EE",
+    "Device_ID": "0x7021",
+    "Bar0_Scale": "Megabytes",
+    "Bar0_Size": bar0_size//1024//1024,
+    "Link_Speed": {64: "2.5_GT/s", 128: "5.0_GT/s"}[pcie_data_width],
+    "Maximum_Link_Width": f"X{nlanes}",
+}
+```
+
+#### Clock Resources
+- [IBUFDS_GTE2](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py#L127-L132): Differential clock input buffer for PCIe reference clock
+- [BUFG](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py#L136): Global clock buffer
+- [S7MMCM](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/s7pciephy.py#L413-L436): Mixed-Mode Clock Manager for generating user clocks
+
+### Xilinx UltraScale/UltraScale+ Implementation
+
+The UltraScale PHY ([`litepcie/phy/uspciephy.py`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/uspciephy.py)) uses more advanced hard blocks:
+
+#### PCIe Hard Block Variants
+Selection logic at [lines 175-185](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/uspciephy.py#L175-L185):
+```python
+pcie_hard_block = {
+    "gen3" : {
+        False : "PCIE3_UltraScale",
+        True  : "PCIE30E_UltraScale",
+    },
+    "gen4" : {
+        False : "PCIE40E_UltraScale",
+        True  : "PCIE4CE_UltraScale",
+    }
+}[speed][is_versal]
+```
+
+These blocks implement:
+- Gen3 (8.0 GT/s) or Gen4 (16.0 GT/s) speeds
+- Up to x16 lane configurations
+- Advanced equalization for Gen3/Gen4
+- Extended configuration space support
+- Enhanced flow control
+
+### Intel Cyclone V Implementation
+
+The Intel PHY ([`litepcie/phy/c5pciephy.py`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/c5pciephy.py)) uses:
+
+#### altpcie_hip Hard IP
+Instantiated via TCL at [lines 374-401](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/c5pciephy.py#L374-L401):
+- Implements PCIe Gen1/Gen2 Physical and Data Link layers
+- Uses Avalon-ST interface instead of AXI
+- Requires protocol conversion wrappers
+
+LitePCIe provides [AvalonST2Native](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/c5pciephy.py#L68-L111) and [Native2AvalonST](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/c5pciephy.py#L115-L158) converters to translate between Intel's Avalon-ST and LitePCIe's native protocol.
+
+### Lattice CertusPro-NX Implementation
+
+The Lattice PHY ([`litepcie/phy/lfcpnxpciephy.py`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/lfcpnxpciephy.py)) uses:
+
+#### pcie_hardblock_x1 IP
+Configured at [lines 312-335](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/phy/lfcpnxpciephy.py#L312-L335):
+- PCIe Gen2 x1 hard IP implementation
+- Integrated SERDES and PCIe controller
+- Limited to single lane operation
 
 ## Comparative Analysis
 

@@ -1,4 +1,4 @@
-# Chapter 6 – LitePCIe's PCIe Stack in Detail
+# LitePCIe Architecture Analysis (ChatGPT-5)
 
 LitePCIe positions itself as a "small footprint and configurable PCIe core" that covers the TLP layer, implements reordering, MSI/MSI-X and provides DMA and memory-mapped front-ends[[10]](sources.md#source10). This chapter examines the source code of LitePCIe and its vendor-specific PHY wrappers to document exactly which protocol layers are implemented inside LitePCIe and which functions depend on proprietary hard IP. It also contrasts the available PHY configurations, identifies the option that minimises reliance on vendor logic, and summarises the currently available information about resource usage. The architectural relationships described below trace directly to the modules and wrappers referenced in the cited source files.
 
@@ -12,7 +12,7 @@ The endpoint wrapper shows how these blocks surround any PHY: the PHY's streamin
 flowchart LR
     subgraph LitePCIe Transaction Layer
         A[TLP Depacketiser]
-        B[TLP Controller\n(tag + reorder)]
+        B["TLP Controller<br/>(tag + reorder)"]
         C[TLP Packetiser]
         A --> B --> C
     end

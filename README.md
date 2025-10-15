@@ -10,3 +10,9 @@ This repository collects an AI-generated multi-chapter report on the state of op
 - [Chapter 5 – Toward a Fully Open PCIe Core: A Roadmap](chapter5.md): proposes guiding principles and a modular architecture roadmap that combines open PHY, data link, and transaction layer efforts supported by open tooling.
 
 Use this index to jump into chapters of interest or to follow the narrative from foundational concepts to implementation challenges and future directions.
+
+## LitePCIe Analysis Reports
+
+In-depth technical analyses of the LitePCIe project:
+- [LitePCIe Architecture Analysis (Claude Opus 4.1)](litepcie-analysis-claude-opus-4-1.md): examines the boundary between LitePCIe's custom implementation and vendor-supplied IP blocks.
+- [LitePCIe Architecture Analysis (ChatGPT-5)](litepcie-analysis-chatgpt5.md): documents which protocol layers are implemented inside LitePCIe and which functions depend on proprietary hard IP.

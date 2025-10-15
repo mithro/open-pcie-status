@@ -1,4 +1,4 @@
-# LitePCIe Architecture: Vendor IP vs Custom Implementation
+# LitePCIe Architecture Analysis (Claude Opus 4.1)
 
 This document analyzes what functionality LitePCIe implements versus what relies on vendor-supplied IP blocks, based on examination of the source code and documentation.
 

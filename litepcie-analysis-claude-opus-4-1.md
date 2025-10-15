@@ -2,6 +2,31 @@
 
 This document analyzes what functionality LitePCIe implements versus what relies on vendor-supplied IP blocks, based on examination of the source code and documentation.
 
+## Table of Contents
+
+- [Core Architecture](#core-architecture)
+- [Vendor PHY Interface Definition](#vendor-phy-interface-definition)
+- [LitePCIe Custom Implementation](#litepcie-custom-implementation)
+  - [TLP Processing Layer](#tlp-processing-layer)
+  - [DMA Engine](#dma-engine)
+  - [Interrupt Controllers](#interrupt-controllers)
+  - [Crossbar](#crossbar)
+  - [Clock Domain Crossing](#clock-domain-crossing)
+- [Vendor-Specific Implementations](#vendor-specific-implementations)
+  - [Xilinx 7-Series Implementation](#xilinx-7-series-implementation)
+  - [Xilinx UltraScale/UltraScale+ Implementation](#xilinx-ultrascaleultrascale-implementation)
+  - [Intel Cyclone V Implementation](#intel-cyclone-v-implementation)
+  - [Lattice CertusPro-NX Implementation](#lattice-certuspro-nx-implementation)
+- [Comparative Analysis](#comparative-analysis)
+  - [Functionality Comparison Table](#functionality-comparison-table)
+  - [PCIe Enumeration Division](#pcie-enumeration-division)
+  - [Implementation Boundaries](#implementation-boundaries)
+    - [Physical Interface Boundary](#physical-interface-boundary)
+    - [Layer Responsibility Division](#layer-responsibility-division)
+    - [Data Flow Across the Boundary](#data-flow-across-the-boundary)
+    - [Portability Through Abstraction](#portability-through-abstraction)
+    - [Current Implementation Division](#current-implementation-division)
+
 ## Core Architecture
 
 LitePCIe implements its Transaction Layer Protocol (TLP) processing entirely in custom Migen/Python code while relying on vendor hard IP blocks for the Physical and Data Link layers. The boundary between these is defined by a simple streaming interface.
@@ -178,7 +203,9 @@ self.tx_cdc = stream.ClockDomainCrossing(
 )
 ```
 
-## Functionality Comparison Table
+## Comparative Analysis
+
+### Functionality Comparison Table
 
 | Functionality | Vendor Hard IP | LitePCIe | Notes |
 |---|---|---|---|
@@ -201,17 +228,17 @@ self.tx_cdc = stream.ClockDomainCrossing(
 | **Clock domain crossing** | ✗ | ✓ | AsyncFIFO between pcie/sys domains |
 | **Data width conversion** | ✗ | ✓ | 64/128/256/512-bit support |
 
-## PCIe Enumeration Division
+### PCIe Enumeration Division
 
 During PCIe enumeration, the responsibilities are divided:
 
-### Vendor IP Handles
+**Vendor IP Handles:**
 - Recognition of Type 0 configuration TLPs based on Bus/Device/Function
 - Storage of standard configuration registers (Device ID, Vendor ID, Class Code, BARs)
 - Automatic generation of completion TLPs for standard config space reads
 - Implementation of power-up unconfigured state
 
-### LitePCIe Handles
+**LitePCIe Handles:**
 - Extended configuration space transactions (0x100-0xFFF)
 - BAR address decoding after enumeration
 - Memory-mapped transaction processing
@@ -219,13 +246,13 @@ During PCIe enumeration, the responsibilities are divided:
 
 The division is clear: when the host reads offset 0x00 (Device ID), the vendor IP responds directly without LitePCIe involvement. When the host accesses memory within a BAR range, the vendor PHY passes the TLP to LitePCIe for processing.
 
-## Implementation Boundaries
+### Implementation Boundaries
 
-### Physical Interface Boundary
+#### Physical Interface Boundary
 
 The interface between vendor IP and LitePCIe is a streaming protocol carrying raw TLP data bytes. This boundary is defined by the `phy_layout()` function which specifies only two signals per direction: data bytes and byte enables. All TLP intelligence resides above this interface in LitePCIe's custom logic.
 
-### Layer Responsibility Division
+#### Layer Responsibility Division
 
 The architectural boundary cleanly separates PCIe protocol layers:
 
@@ -265,7 +292,7 @@ The architectural boundary cleanly separates PCIe protocol layers:
   - Protocol bridges (AXI, Wishbone, Avalon)
   - Crossbar arbitration
 
-### Data Flow Across the Boundary
+#### Data Flow Across the Boundary
 
 **Receive Path:**
 1. Vendor PHY receives TLPs from the PCIe link
@@ -281,7 +308,7 @@ The architectural boundary cleanly separates PCIe protocol layers:
 4. DLL adds CRC and handles link-layer protocol
 5. PHY transmits on PCIe lanes
 
-### Portability Through Abstraction
+#### Portability Through Abstraction
 
 This clean boundary enables LitePCIe to achieve vendor independence:
 
@@ -290,7 +317,7 @@ This clean boundary enables LitePCIe to achieve vendor independence:
 - **Application code** remains unchanged across platforms
 - **Protocol behavior** (tag allocation, completion reordering, MSI generation) is consistent regardless of underlying hard IP
 
-### Current Implementation Division
+#### Current Implementation Division
 
 The boundary shows how functionality is currently divided:
 

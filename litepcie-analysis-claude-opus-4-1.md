@@ -219,10 +219,93 @@ During PCIe enumeration, the responsibilities are divided:
 
 The division is clear: when the host reads offset 0x00 (Device ID), the vendor IP responds directly without LitePCIe involvement. When the host accesses memory within a BAR range, the vendor PHY passes the TLP to LitePCIe for processing.
 
-## Resource Usage Demonstrating Functional Independence
-
-The Xilinx 7-Series implementation uses approximately 6% of LUTs and 3% of registers on an XC7A200T for a Gen2 x4 configuration ([source](https://github.com/enjoy-digital/litepcie/blob/master/README.md)). This demonstrates that the majority of PCIe functionality is implemented in LitePCIe's custom logic rather than relying on vendor hard blocks, which are fixed-size regardless of the complexity of the upper layers.
-
 ## Implementation Boundaries
 
-The interface between vendor IP and LitePCIe is a streaming protocol carrying raw TLP data bytes. The vendor IP provides device identity and physical connectivity, while LitePCIe implements all application behavior, packet intelligence, and transaction processing. This architecture allows LitePCIe to provide identical functionality across different vendor platforms while leveraging vendor-certified physical layer implementations.
+### Physical Interface Boundary
+
+The interface between vendor IP and LitePCIe is a streaming protocol carrying raw TLP data bytes. This boundary is defined by the `phy_layout()` function which specifies only two signals per direction: data bytes and byte enables. All TLP intelligence resides above this interface in LitePCIe's custom logic.
+
+### Layer Responsibility Division
+
+The architectural boundary cleanly separates PCIe protocol layers:
+
+**Vendor Hard IP Implements:**
+- Physical Layer (PHY)
+  - SERDES transceivers
+  - 8b/10b or 128b/130b encoding/decoding
+  - Clock and data recovery
+  - Equalization and signal conditioning
+- Data Link Layer (DLL)
+  - DLLP generation and processing
+  - ACK/NAK protocol
+  - TLP CRC generation and checking
+  - Retry buffer management
+  - Link Training and Status State Machine (LTSSM)
+- Base Configuration Space (offsets 0x00-0xFF)
+  - Device/Vendor ID registers
+  - BARs, Capabilities pointer
+  - Standard config space read/write handling
+
+**LitePCIe Implements:**
+- Transaction Layer (TLP)
+  - TLP header construction and parsing
+  - Request/Completion matching
+  - Tag management and allocation
+  - Completion timeout detection
+  - Reordering buffer
+- Application Layer Features
+  - DMA engines with scatter-gather support
+  - MSI/MSI-X interrupt generation
+  - BAR address decoding and routing
+  - Memory and I/O transaction processing
+  - Extended configuration space (0x100-0xFFF)
+- System Integration
+  - Clock domain crossing
+  - Data width conversion (64/128/256/512-bit)
+  - Protocol bridges (AXI, Wishbone, Avalon)
+  - Crossbar arbitration
+
+### Data Flow Across the Boundary
+
+**Receive Path:**
+1. Vendor PHY receives TLPs from the PCIe link
+2. DLL validates CRC and handles retries
+3. Raw TLP bytes stream into LitePCIe via `source.dat` and `source.be`
+4. LitePCIe depacketizer extracts headers and routes to appropriate handlers
+5. Application logic processes requests and generates responses
+
+**Transmit Path:**
+1. LitePCIe application logic generates transaction requests
+2. Packetizer constructs TLP headers with proper addressing and tags
+3. Formatted TLPs stream to vendor PHY via `sink.dat` and `sink.be`
+4. DLL adds CRC and handles link-layer protocol
+5. PHY transmits on PCIe lanes
+
+### Portability Through Abstraction
+
+This clean boundary enables LitePCIe to achieve vendor independence:
+
+- **Same core logic** runs on Xilinx, Intel, Lattice, and Gowin FPGAs
+- **Vendor-specific PHY wrappers** only translate between native protocols (AXI-Stream, Avalon-ST, etc.) and the unified `phy_layout()` interface
+- **Application code** remains unchanged across platforms
+- **Protocol behavior** (tag allocation, completion reordering, MSI generation) is consistent regardless of underlying hard IP
+
+### Current Implementation Division
+
+The boundary shows how functionality is currently divided:
+
+**Currently Implemented in Vendor Hard IP:**
+- SERDES hard macros (physical signaling)
+- LTSSM implementation (link training sequences)
+- Flow control credit counters (DLL state machine)
+- TLP CRC generation and checking
+- Retry buffer management
+
+**Currently Implemented in LitePCIe Open Source:**
+- All Transaction Layer processing
+- DMA engines and memory controllers
+- Interrupt generation and routing
+- System bus interfaces and bridges
+- Application-specific packet processing
+
+This architecture shows that LitePCIe implements the majority of PCIe functionality—everything above the Data Link Layer—in portable, open-source HDL. The vendor IP provides the physical connectivity and base protocol compliance, while LitePCIe implements all application behavior, packet intelligence, and transaction processing.

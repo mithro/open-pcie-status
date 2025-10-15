@@ -16,3 +16,8 @@ Use this index to jump into chapters of interest or to follow the narrative from
 In-depth technical analyses of the LitePCIe project:
 - [LitePCIe Architecture Analysis (Claude Opus 4.1)](litepcie-analysis-claude-opus-4-1.md): examines the boundary between LitePCIe's custom implementation and vendor-supplied IP blocks.
 - [LitePCIe Architecture Analysis (ChatGPT-5)](litepcie-analysis-chatgpt5.md): documents which protocol layers are implemented inside LitePCIe and which functions depend on proprietary hard IP.
+
+## Verilog-PCIe Analysis Reports
+
+In-depth technical analyses of the Verilog-PCIe project:
+- [Verilog-PCIe Architecture Analysis (ChatGPT-5)](verilog-pcie-analysis-chatgpt5.md): examines the boundary between Verilog-PCIe's custom implementation and vendor-supplied IP blocks, tracking the exact code boundaries for TLP processing, DMA engines, and vendor adapter interfaces.

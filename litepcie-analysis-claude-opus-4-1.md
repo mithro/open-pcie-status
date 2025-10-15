@@ -44,7 +44,7 @@ def phy_layout(data_width):
     return EndpointDescription(layout)
 ```
 
-This streaming interface carries raw TLP bytes from the vendor PHY to LitePCIe's custom logic. All TLP intelligence resides in LitePCIe's implementation above this boundary.
+This streaming interface carries raw [TLP](https://github.com/enjoy-digital/litepcie/tree/master/litepcie/tlp) bytes from the [vendor PHY](https://github.com/enjoy-digital/litepcie/tree/master/litepcie/phy) to LitePCIe's custom logic. All TLP intelligence resides in LitePCIe's implementation above this boundary.
 
 ## LitePCIe Custom Implementation
 
@@ -217,8 +217,8 @@ Configured at [lines 312-335](https://github.com/enjoy-digital/litepcie/blob/mas
 | **Flow control credits** | ✓ | ✗ | VC credit management |
 | **Standard config space (0x00-0xFF)** | ✓ | ✗ | Device/Vendor ID, BARs |
 | **Extended config space (0x100-0xFFF)** | ✗ | ✓ | [Handled by LitePCIe](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/core/endpoint.py#L168-L175) |
-| **TLP packet construction** | ✗ | ✓ | [LitePCIeTLPPacketizer](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/tlp/packetizer.py) |
-| **TLP packet parsing** | ✗ | ✓ | [LitePCIeTLPDepacketizer](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/tlp/depacketizer.py) |
+| **TLP packet construction** | ✗ | ✓ | [LitePCIeTLPPacketizer](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/tlp/packetizer.py#L362) |
+| **TLP packet parsing** | ✗ | ✓ | [LitePCIeTLPDepacketizer](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/tlp/depacketizer.py#L296) |
 | **Memory transaction handling** | ✗ | ✓ | BAR address decoding |
 | **DMA engines** | ✗ | ✓ | [Scatter-gather DMA](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/frontend/dma.py) |
 | **MSI/MSI-X generation** | ✗ | ✓ | [Interrupt controllers](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/core/msi.py) |
@@ -250,7 +250,7 @@ The division is clear: when the host reads offset 0x00 (Device ID), the vendor I
 
 #### Physical Interface Boundary
 
-The interface between vendor IP and LitePCIe is a streaming protocol carrying raw TLP data bytes. This boundary is defined by the `phy_layout()` function which specifies only two signals per direction: data bytes and byte enables. All TLP intelligence resides above this interface in LitePCIe's custom logic.
+The interface between vendor IP and LitePCIe is a streaming protocol carrying raw TLP data bytes. This boundary is defined by the [`phy_layout()`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/common.py#L33-L40) function which specifies only two signals per direction: data bytes and byte enables. All TLP intelligence resides above this interface in LitePCIe's custom logic.
 
 #### Layer Responsibility Division
 
@@ -297,14 +297,14 @@ The architectural boundary cleanly separates PCIe protocol layers:
 **Receive Path:**
 1. Vendor PHY receives TLPs from the PCIe link
 2. DLL validates CRC and handles retries
-3. Raw TLP bytes stream into LitePCIe via `source.dat` and `source.be`
-4. LitePCIe depacketizer extracts headers and routes to appropriate handlers
+3. Raw TLP bytes stream into LitePCIe via [`source.dat`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/common.py#L33-L40) and [`source.be`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/common.py#L33-L40)
+4. LitePCIe [depacketizer](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/tlp/depacketizer.py#L296) extracts headers and routes to appropriate handlers
 5. Application logic processes requests and generates responses
 
 **Transmit Path:**
 1. LitePCIe application logic generates transaction requests
-2. Packetizer constructs TLP headers with proper addressing and tags
-3. Formatted TLPs stream to vendor PHY via `sink.dat` and `sink.be`
+2. [Packetizer](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/tlp/packetizer.py#L362) constructs TLP headers with proper addressing and tags
+3. Formatted TLPs stream to vendor PHY via [`sink.dat`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/common.py#L33-L40) and [`sink.be`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/common.py#L33-L40)
 4. DLL adds CRC and handles link-layer protocol
 5. PHY transmits on PCIe lanes
 
@@ -313,7 +313,7 @@ The architectural boundary cleanly separates PCIe protocol layers:
 This clean boundary enables LitePCIe to achieve vendor independence:
 
 - **Same core logic** runs on Xilinx, Intel, Lattice, and Gowin FPGAs
-- **Vendor-specific PHY wrappers** only translate between native protocols (AXI-Stream, Avalon-ST, etc.) and the unified `phy_layout()` interface
+- **Vendor-specific PHY wrappers** only translate between native protocols (AXI-Stream, Avalon-ST, etc.) and the unified [`phy_layout()`](https://github.com/enjoy-digital/litepcie/blob/master/litepcie/common.py#L33-L40) interface
 - **Application code** remains unchanged across platforms
 - **Protocol behavior** (tag allocation, completion reordering, MSI generation) is consistent regardless of underlying hard IP
 
